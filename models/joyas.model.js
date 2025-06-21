@@ -1,4 +1,5 @@
 const { pool } = require('../db/connection') // Conexión a la base de datos PostgreSQL
+const format = require('pg-format')
 
 // Obtener la cantidad total de joyas
 async function getTotalJoyas() {
@@ -7,13 +8,17 @@ async function getTotalJoyas() {
   return parseInt(totalResult.rows[0].count) // Devuelve el total como número
 }
 
-// Obtener joyas con paginación y orden
+// Obtener joyas con paginación y orden. Validar campos y dirección para uso malicioso
 async function getJoyas(limits, offset, field, direction) {
-  const query = `
-    SELECT * FROM inventario
-    ORDER BY ${field} ${direction}
-    LIMIT $1 OFFSET $2
-  `
+  const validFields = ['id', 'nombre', 'categoria', 'metal', 'precio', 'stock']
+  const validDirections = ['ASC', 'DESC']
+  const safeField = validFields.includes(field) ? field : 'id'
+  const safeDirection = validDirections.includes(direction) ? direction : 'ASC'
+  const query = format(
+    'SELECT * FROM inventario ORDER BY %I %s LIMIT $1 OFFSET $2',
+    safeField,
+    safeDirection
+  )
   const result = await pool.query(query, [limits, offset]) // Parámetros para evitar inyección SQL
   return result.rows
 }
